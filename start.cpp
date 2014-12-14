@@ -1,12 +1,3 @@
-#include <list>
-#include <cstdlib>
-#include <ctime>
-#include <GL/glut.h>
-
-void display()
-{
-
-}
 
 void reshape (int wid, int hgt)
 {
@@ -28,22 +19,21 @@ void mouse (int button, int state, int x, int y)
 
 void init ()
 {
-    
     double x, y;
     srand(time(NULL));
 }
 
 int main(int argc, char** argv)
 {
-    /*glutInit(&argc, argv);
+    glutInit(&argc, argv);
     glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB);
     glutInitWindowSize (width, height);
     glutInitWindowPosition (100, 100);
     glutCreateWindow ("test");
     glutDisplayFunc(display);
     glutMouseFunc (mouse);
-    glutReshapeFunc (reshape);*/
+    glutReshapeFunc (reshape);
     init();
-    //glutMainLoop();
+    glutMainLoop();
     return 0;
 }
