@@ -1,23 +1,25 @@
 #include <GL/glut.h>
 #include <cstdlib>
-#
+#include <vector>
 
 #include "cell.h"
 #include "convective.h"
 
 int width = 1200;
 int height = 640;
-int enterVelocity = 80;
+int enterVelocity = 50;
 int rowNum = 0;
 int columnNum = 0;
-int cellSize = 2;
+int cellSize = 20;
 double gravity = 10;
-double deltaT = 1;
-double scale = 0.01;
+double deltaT = 0.1;
+double scale = 0.5;
+double tol = 1E-15;
 bool stop = false;
 int t = 0;
 bool bug = false;
-Cell** m_grid;
+std::vector<std::vector<Cell> > m_grid;
+std::vector<std::vector<Cell> > m_grid_next;
 
 void display(void)
 {
@@ -29,81 +31,70 @@ void display(void)
     double duv =0;
     double cellSize1 = cellSize/scale;
     bool debug = false;
+    /*for(int i = 2; i < h-3; i++) {
+        for(int j = 2; j < w-3; j++) {
+            if((m_grid[i][j].rightSpeed!=0)||(m_grid[i][j].bottomSpeed!=0)) {
+            std::cout << i << " " << j << " Liquido: " << m_grid[i][j].hasLiquid << std::endl;
+            std::cout << " VelocidadeX: "  << m_grid[i][j].rightSpeed << " VelocidadeY: "  << m_grid[i][j].bottomSpeed << std::endl;
+            }
+        }
+    }*/
     if(!stop){
         for(int i = h-3; i >= 2; i--) {
             for(int j = 2; j < w-3; j++) {
                 debug = false;
                 if(!m_grid[i][j].isVoid) {
-                    if(m_grid[i][j].hasLiquid){
-                        if(false) {
-                            std::cout << i << " " << j << std::endl;
-                            std::cout << m_grid[i][j].leftSpeed << std::endl;
-                            debug = true;
-                        }
-                        duu = DUU(m_grid[i][j-2].leftSpeed,m_grid[i][j-1].leftSpeed,m_grid[i][j].leftSpeed,
-                            m_grid[i][j+1].leftSpeed,m_grid[i][j+2].leftSpeed, cellSize1, cellSize1, cellSize1
-                            , cellSize1, 1, m_grid[i][j].isBorder);
-                        duv = DUV(m_grid[i-2][j].leftSpeed, m_grid[i-1][j].leftSpeed, m_grid[i][j].leftSpeed,
-                                    m_grid[i+1][j].leftSpeed, m_grid[i+2][j].leftSpeed, m_grid[i][j].speed_x, m_grid[i+1][j].speed_x,
-                                    cellSize1, cellSize1, cellSize1, cellSize1, cellSize1, 1, m_grid[i][j].isBorder, debug);/**/
+                    if(m_grid[i][j].hasLiquid){      
                         if(false) {
                             std::cout << m_grid[i-2][j].leftSpeed << " " << m_grid[i][j-1].leftSpeed << " " << m_grid[i][j].leftSpeed << " " << m_grid[i+1][j].leftSpeed << " " << m_grid[i+2][j].leftSpeed << " " << m_grid[i][j].speed_x << " " << m_grid[i+1][j].speed_x << std::endl;
-                            std::cout << duu << " " << duv << std::endl;
                         }
-                        //std::cout << duv << std::endl;
-                        //m_grid[i][j].leftSpeed -= (duu + duv)*deltaT;
-
                         duu = DUU(m_grid[i][j-2].rightSpeed,m_grid[i][j-1].rightSpeed,m_grid[i][j].rightSpeed,
                             m_grid[i][j+1].rightSpeed,m_grid[i][j+2].rightSpeed, cellSize1, cellSize1, cellSize1
                             , cellSize1, 1, m_grid[i][j].isBorder);
+                /*        if(isnan(duu)||isinf(duu)) {
+                            std::cout << i << " " << j << std::endl;
+                            std::cout << m_grid[i][j-2].rightSpeed << " " << m_grid[i][j-1].rightSpeed << " " << m_grid[i][j].rightSpeed << " " <<        m_grid[i][j+1].rightSpeed << " " << m_grid[i][j+2].rightSpeed << std::endl;
+                        }*/
                         duv = DUV(m_grid[i-2][j].rightSpeed, m_grid[i-1][j].rightSpeed, m_grid[i][j].rightSpeed,
-                                    m_grid[i+1][j].rightSpeed, m_grid[i+2][j].rightSpeed, m_grid[i][j].speed_x, m_grid[i+1][j].speed_x,
+                                    m_grid[i+1][j].rightSpeed, m_grid[i+2][j].rightSpeed, m_grid[i][j].speed_y, m_grid[i-1][j].speed_y,
                                     cellSize1, cellSize1, cellSize1, cellSize1, cellSize1, 1, m_grid[i][j].isBorder);/**/
-                        m_grid[i][j].rightSpeed -= (duu + duv)*deltaT;
+                        m_grid_next[i][j].rightSpeed = m_grid[i][j].rightSpeed - (duu + duv)*deltaT;
+                        m_grid_next[i][j+1].leftSpeed = m_grid_next[i][j].rightSpeed;
                     
                         duu = DUU(m_grid[i-2][j].bottomSpeed,m_grid[i-1][j].bottomSpeed,m_grid[i][j].bottomSpeed,
                                 m_grid[i+1][j].bottomSpeed,m_grid[i+2][j].bottomSpeed, cellSize1, cellSize1, cellSize1
                                 , cellSize1, 1, m_grid[i][j].isBorder);
                         duv = DUV(m_grid[i][j-2].bottomSpeed,m_grid[i][j-1].bottomSpeed,m_grid[i][j].bottomSpeed,
-                                m_grid[i][j+1].bottomSpeed,m_grid[i][j+2].bottomSpeed, m_grid[i][j].speed_y, m_grid[i][j-1].speed_y,
+                                m_grid[i][j+1].bottomSpeed,m_grid[i][j+2].bottomSpeed, m_grid[i][j].speed_x, m_grid[i][j-1].speed_x,
                                 cellSize1, cellSize1, cellSize1, cellSize1, cellSize1, 1, m_grid[i][j].isBorder);/**/
-                        m_grid[i][j].bottomSpeed -=  (duu + duv)*deltaT;
+                        m_grid_next[i][j].bottomSpeed = m_grid[i][j].bottomSpeed - (duu + duv)*deltaT;
+                        m_grid_next[i+1][j].topSpeed =  m_grid[i][j].bottomSpeed;
 
-                        duu = DUU(m_grid[i-2][j].topSpeed,m_grid[i-1][j].topSpeed,m_grid[i][j].topSpeed,
-                                m_grid[i+1][j].topSpeed,m_grid[i+2][j].topSpeed, cellSize1, cellSize1, cellSize1
-                                , cellSize1, 1, m_grid[i][j].isBorder);
-                        duv = DUV(m_grid[i][j-2].topSpeed,m_grid[i][j-1].topSpeed,m_grid[i][j].topSpeed,
-                                m_grid[i][j+1].topSpeed,m_grid[i][j+2].topSpeed, m_grid[i][j].speed_y, m_grid[i][j-1].speed_y,
-                                cellSize1, cellSize1, cellSize1, cellSize1, cellSize1, 1, m_grid[i][j].isBorder);/**/
-                        //m_grid[i][j].topSpeed -=  (duu + duv)*deltaT;
-                    //    std::cout << duu << " " << duv << std::endl;
                         if(j==2&&(i<2+3*height/(4*cellSize))&&(i>2+height/(4*cellSize))) {
-                            m_grid[i][j].leftSpeed = enterVelocity;
-                            m_grid[i][j].rightSpeed = enterVelocity;    
+                            m_grid_next[i][j].leftSpeed = enterVelocity;
+                            m_grid_next[i][j].rightSpeed = enterVelocity;    
                         }
-                        if(m_grid[i][j].leftSpeed < 0) {
-                            //std::cout << i << " " << j << std::endl;
-                            //std::cout << m_grid[i][j].leftSpeed << std::endl;
-                        }
-                        m_grid[i][j].updateSpeed();
+                        m_grid_next[i][j].updateSpeed();
 
                     }
                 }
             }
         }
-        for(int i = h-3; i >= 3; i--) {
+        for(int i = 2; i < h-3; i++) {
             for(int j = 2; j < w-3; j++) {
-                if(m_grid[i][j].hasLiquid&(j>2)) {
-                    m_grid[i][j].bottomSpeed -=  (gravity)*deltaT;
-                    m_grid[i+1][j].topSpeed -=  (gravity)*deltaT;
+                if(m_grid[i][j].hasLiquid&&(j>2)) {
+                    m_grid_next[i][j].bottomSpeed -=  (gravity)*deltaT;
                 }
-                if((m_grid[i][j-1].rightSpeed != 0)||(m_grid[i-1][j].bottomSpeed != 0))
-                        m_grid[i][j].hasLiquid = true;
+                m_grid_next[i][j].updateSpeed();
+                m_grid_next[i][j].hasLiquid = (((abs(m_grid[i][j-1].speed_x) > abs(m_grid[i][j-1].speed_y))&&m_grid[i][j-1].hasLiquid&&(m_grid[i][j-1].speed_x != 0))
+                                             ||((abs(m_grid[i-1][j].speed_y) >= abs(m_grid[i-1][j].speed_x))&&m_grid[i-1][j].hasLiquid&&(m_grid[i-1][j].speed_y != 0))
+                                             ||((m_grid_next[i-1][j].hasLiquid&&m_grid_next[i+1][j].hasLiquid)||(m_grid_next[i][j-1].hasLiquid&&m_grid_next[i][j+1].hasLiquid))
+                                             ||((m_grid_next[i-1][j].hasLiquid)&&(m_grid_next[i][j-1].hasLiquid)));
             }
         }
     }
     for(int i = 2; i < h-2; i++) {
-        for(int j= 2; j < w-2; j++) {
+        for(int j= 1; j < w-2; j++) {
             int J = j-2;
             int I = i-2;
             glPointSize(1);
@@ -113,20 +104,20 @@ void display(void)
             glEnd();
             glColor3f (1.0, 1.0, 1.0);
             if(m_grid[i][j].hasLiquid) {
-//                std::cout << i << " " << j << std::endl;
-//                std::cout << m_grid[i][j].leftSpeed << " " << m_grid[i][j].bottomSpeed << " " << m_grid[i][j].topSpeed << " " << m_grid[i][j].rightSpeed << std::endl;
+//                
+                glBegin(GL_LINES);
+                        glVertex2f ((J)  *cellSize + cellSize/2, (I)  *cellSize + cellSize/2);
+                        glVertex2f ((J)  *cellSize + cellSize/2 + m_grid[i][j].speed_x, 
+                                    (I)  *cellSize + cellSize/2 - m_grid[i][j].speed_y);
+                glEnd();
             }
-            glBegin(GL_LINES);
-                glVertex2f ((J)  *cellSize + cellSize/2, (I)  *cellSize + cellSize/2);
-                glVertex2f ((J)  *cellSize + cellSize/2 + m_grid[i][j].speed_x*scale*5, 
-                            (I)  *cellSize + cellSize/2 - m_grid[i][j].speed_y*scale*5);
-            glEnd();
             if((m_grid[i][j].hasLiquid && (i>=h-3))||(m_grid[i][j].hasLiquid && (j>=w-3)))
                 stop = true;
         }
     }
     std::cout << "Stop: " << stop << std::endl;
     t++;
+    m_grid = std::vector<std::vector<Cell> >(m_grid_next);
     /// Finish
     glutSwapBuffers ();
 }
@@ -151,9 +142,8 @@ void init ()
     int h = height/cellSize + 4;
     rowNum = h;
     columnNum = w;
-    m_grid = new Cell*[h];
+    m_grid = std::vector<std::vector<Cell> >(h, std::vector<Cell>(w, Cell()));
     for(int i = 0; i < h; i++) {
-        m_grid[i] = new Cell[w];
         for(int j = 0; j < w; j++) {
             m_grid[i][j].leftSpeed = 0;
             m_grid[i][j].rightSpeed = 0;
@@ -166,7 +156,7 @@ void init ()
                 m_grid[i][j].isBorder = true;
             }
             if(((j<2)&&((i<2+3*height/(4*cellSize))&&(i>2+height/(4*cellSize))))) {
-//            if((j<=2)&&((i>10)&&(i<15))) {
+//            if((j<=2)&&((i>10)&&(i<13))) {
                 m_grid[i][j].leftSpeed = enterVelocity;
                 m_grid[i][j].rightSpeed = enterVelocity;
                 m_grid[i][j].hasLiquid = true;
@@ -174,6 +164,11 @@ void init ()
             m_grid[i][j].updateSpeed();
         }
     }
+    m_grid_next = std::vector<std::vector<Cell> >(m_grid);
+}
+
+void idleLoop() {
+    glutPostRedisplay();
 }
 
 int main(int argc, char** argv)
@@ -184,6 +179,7 @@ int main(int argc, char** argv)
     glutInitWindowPosition (100, 100);
     glutCreateWindow ("test");
     glutDisplayFunc(display);
+    glutIdleFunc(idleLoop);
     glutMouseFunc (mouse);
     glutReshapeFunc (reshape);
     init();
